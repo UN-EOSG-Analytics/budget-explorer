@@ -5,6 +5,8 @@ import { formatMoney, formatVariance, getArrow } from '@/lib/format';
 import { X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+
 interface EntityModalProps {
   entity: TreemapEntity | null;
   onClose: () => void;
@@ -34,7 +36,7 @@ export default function EntityModal({ entity, onClose }: EntityModalProps) {
     if (!entity) return;
     
     setLoadingNarratives(true);
-    fetch('/details.json')
+    fetch(`${basePath}/details.json`)
       .then(res => res.json())
       .then((data: DetailItem[]) => {
         const match = data.find(d => 
