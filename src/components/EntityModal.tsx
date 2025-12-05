@@ -362,9 +362,9 @@ export default function EntityModal({ entity, onClose }: EntityModalProps) {
                 </div>
                 {/* Legend */}
                 <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-600 border border-white" />2025</span>
-                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-un-blue/50" />Proposed</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-un-blue border border-white" />Revised</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-600 border border-white" />2025 Approved</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-un-blue/50" />2026 Proposed</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-un-blue border border-white" />2026 Revised</span>
                 </div>
               </section>
             );
