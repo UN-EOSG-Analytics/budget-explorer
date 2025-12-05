@@ -31,12 +31,18 @@ def clean_table6():
     t6[['Section', 'Section name']] = t6[col].str.extract(r'^(\d+)\.\t(.+)')
     t6[['Section', 'Section name']] = t6.groupby('Part')[['Section', 'Section name']].ffill()
     t6['Entity name'] = t6[col].where(is_entity_total).str.replace(r'^–\t', '', regex=True)
+    # special case: "Resident coordinator systema" has footnote 'a' attached
+    t6['_entity_fn'] = t6['Entity name'].where(t6['Entity name'] == 'Resident coordinator systema').str.extract(r'([a-z])$', expand=False)
+    t6['Entity name'] = t6['Entity name'].replace('Resident coordinator systema', 'Resident coordinator system')
     t6 = t6[~is_part_header & ~t6[col].isin(['–\tOther', 'Total']) & t6['2025 approved'].notna() & (t6['2025 approved'] != '')]
     order = ['row_type', 'Part', 'Part name', 'Section', 'Section name', 'Entity name']
-    t6 = t6[order + [c for c in t6.columns if c not in order + [col]]]
-    num_cols = [c for c in t6.columns if c not in order]
+    num_cols = [c for c in t6.columns if c not in order + [col, '_entity_fn']]
+    # extract footnote markers before cleaning (from numeric cols + entity name)
+    t6['footnotes'] = t6[num_cols].apply(lambda row: ''.join(sorted(set(''.join(row.dropna().astype(str).str.extract(r'([a-z]+)$', expand=False).dropna())))), axis=1)
+    t6['footnotes'] = (t6['_entity_fn'].fillna('') + t6['footnotes']).apply(lambda x: ''.join(sorted(set(x))) or pd.NA)
+    t6 = t6[order + num_cols + ['footnotes']]
     for c in num_cols:
-        t6[c] = t6[c].replace('–', pd.NA).str.replace(r'[\s,]', '', regex=True).str.replace(r'\((.+)\)', r'-\1', regex=True)
+        t6[c] = t6[c].replace('–', '0').str.replace(r'[\s,]', '', regex=True).str.replace(r'\((.+)\)[a-z]*', r'-\1', regex=True).str.replace(r'[a-z]+$', '', regex=True)
         t6[c] = pd.to_numeric(t6[c], errors='coerce')
     t6.to_csv("data/intermediate/table6_clean.csv", index=False)
 
