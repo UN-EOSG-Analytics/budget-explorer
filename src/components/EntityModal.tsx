@@ -261,116 +261,110 @@ export default function EntityModal({ entity, onClose }: EntityModalProps) {
             )}
           </section>
 
-          {/* Resource Changes Chart */}
+          {/* Resource Changes Lollipop Chart */}
           {resourceTable && resourceTable.rows.length > 0 && (() => {
             const parseNum = (s: string) => parseFloat(s) || 0;
             const rows = resourceTable.rows
               .filter(r => !r[0].toLowerCase().includes('variance') && !r[0].toLowerCase().includes('total'))
               .map(r => ({
                 label: r[0].replace(/^[IVX]+\.\t/, ''),
-                approved: parseNum(r[1]),
-                proposed: parseNum(r[2]),
-                consolidation: parseNum(r[3]),
-                other: parseNum(r[4]),
-                revised: parseNum(r[5]),
+                approved: parseNum(r[1]) * 1000,
+                proposed: parseNum(r[2]) * 1000,
+                consolidation: parseNum(r[3]) * 1000,
+                other: parseNum(r[4]) * 1000,
+                revised: parseNum(r[5]) * 1000,
               }));
-            const globalMax = Math.max(...rows.flatMap(r => [Math.abs(r.approved), Math.abs(r.proposed), Math.abs(r.revised)]));
-            const MAX_H = 40; // max height in pixels
-            const MIN_H = 8;  // min height in pixels
+            const maxVal = Math.max(...rows.flatMap(r => [r.approved, r.proposed, r.revised]));
+            const scale = (v: number) => maxVal > 0 ? (v / maxVal) * 100 : 0;
+            const ROW_H = 24;
+            const LABEL_W = 140;
             
             return (
               <section>
                 <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-3">Resource Changes by Object</h3>
-                {/* Header */}
-                <div className="flex text-[10px] text-gray-500 mb-2">
-                  <div className="w-28 flex-shrink-0" />
-                  <div className="flex-1 grid grid-cols-5 gap-1 text-center items-end">
-                    <span>2025 Approved</span>
-                    <span>2026 Proposed</span>
-                    <span>Consolidation</span>
-                    <span>Other</span>
-                    <span>2026<br/>Revised</span>
-                  </div>
-                </div>
-                <div className="space-y-1">
+                <div className="space-y-0.5">
                   {rows.map((row, i) => {
-                    // Row's max value determines its height
-                    const rowMax = Math.max(row.approved, row.proposed, row.revised);
-                    const rowH = Math.max(MIN_H, (rowMax / globalMax) * MAX_H);
-                    // Scale within this row (100% = rowMax)
-                    const scale = (v: number) => rowMax > 0 ? (v / rowMax) * 100 : 0;
-                    // Waterfall positions
-                    const afterConsol = row.proposed + row.consolidation;
-                    const consolTop = row.consolidation < 0 ? scale(afterConsol) : scale(row.proposed);
-                    const consolH = rowMax > 0 ? (Math.abs(row.consolidation) / rowMax) * 100 : 0;
-                    const afterOther = afterConsol + row.other;
-                    const otherTop = row.other < 0 ? scale(afterOther) : scale(afterConsol);
-                    const otherH = rowMax > 0 ? (Math.abs(row.other) / rowMax) * 100 : 0;
+                    const minX = Math.min(row.approved, row.revised);
+                    const maxX = Math.max(row.approved, row.revised);
+                    const variance = row.approved > 0 ? ((row.revised - row.approved) / row.approved) * 100 : null;
                     
                     return (
-                      <div key={i} className="flex items-center group relative">
-                        <div className="w-28 flex-shrink-0 text-[10px] truncate pr-2 text-gray-600" title={row.label}>
+                      <div key={i} className="flex items-center group relative" style={{ height: ROW_H }}>
+                        <div className="flex-shrink-0 text-[10px] truncate pr-2 text-gray-600" style={{ width: LABEL_W }} title={row.label}>
                           {row.label}
                         </div>
-                        <div className="flex-1 grid grid-cols-5 gap-1 relative" style={{ height: rowH }}>
-                          {/* 2025 Approved */}
-                          <div className="relative">
-                            <div className="absolute bottom-0 left-0 right-0 bg-gray-800 rounded" style={{ height: `${Math.max(2, scale(row.approved))}%` }} />
-                          </div>
-                          {/* 2026 Proposed */}
-                          <div className="relative">
-                            <div className="absolute bottom-0 left-0 right-0 bg-gray-400 rounded" style={{ height: `${Math.max(2, scale(row.proposed))}%` }} />
-                          </div>
-                          {/* Consolidation - waterfall positioned */}
-                          <div className="relative">
-                            {row.consolidation !== 0 ? (
-                              <div 
-                                className={`absolute left-0 right-0 rounded ${row.consolidation < 0 ? 'bg-red-500' : 'bg-green-500'}`} 
-                                style={{ bottom: `${consolTop}%`, height: `${Math.max(2, consolH)}%` }} 
-                              />
-                            ) : (
-                              <div className="absolute left-0 right-0 h-px bg-gray-300" style={{ bottom: `${scale(row.proposed)}%` }} />
-                            )}
-                          </div>
-                          {/* Other - waterfall positioned */}
-                          <div className="relative">
-                            {row.other !== 0 ? (
-                              <div 
-                                className={`absolute left-0 right-0 rounded ${row.other < 0 ? 'bg-red-500' : 'bg-green-500'}`} 
-                                style={{ bottom: `${otherTop}%`, height: `${Math.max(2, otherH)}%` }} 
-                              />
-                            ) : (
-                              <div className="absolute left-0 right-0 h-px bg-gray-300" style={{ bottom: `${scale(afterConsol)}%` }} />
-                            )}
-                          </div>
-                          {/* 2026 Revised */}
-                          <div className="relative">
-                            <div className="absolute bottom-0 left-0 right-0 bg-un-blue rounded" style={{ height: `${Math.max(2, scale(row.revised))}%` }} />
-                          </div>
+                        {/* Chart area */}
+                        <div className="flex-1 relative h-full">
+                          {/* Connecting line */}
+                          <div
+                            className="absolute top-1/2 h-0.5 bg-gray-300"
+                            style={{
+                              left: `${scale(minX)}%`,
+                              width: `${Math.max(1, scale(maxX) - scale(minX))}%`,
+                              transform: 'translateY(-50%)',
+                            }}
+                          />
+                          {/* 2026 proposed (small dot) */}
+                          <div
+                            className="absolute top-1/2 w-2 h-2 rounded-full bg-un-blue/50 border border-white"
+                            style={{ left: `${scale(row.proposed)}%`, transform: 'translate(-50%, -50%)' }}
+                          />
+                          {/* 2025 approved (large dot) */}
+                          <div
+                            className="absolute top-1/2 w-3 h-3 rounded-full bg-gray-600 border-2 border-white shadow"
+                            style={{ left: `${scale(row.approved)}%`, transform: 'translate(-50%, -50%)' }}
+                          />
+                          {/* 2026 revised (large dot, UN blue) */}
+                          <div
+                            className="absolute top-1/2 w-3 h-3 rounded-full bg-un-blue border-2 border-white shadow"
+                            style={{ left: `${scale(row.revised)}%`, transform: 'translate(-50%, -50%)' }}
+                          />
                         </div>
                         {/* Tooltip */}
-                        <div className="absolute left-28 top-1/2 -translate-y-1/2 ml-2 bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-10">
+                        <div className="absolute bg-white border border-gray-200 rounded-lg px-3 py-2 shadow-lg opacity-0 group-hover:opacity-100 pointer-events-none z-10 w-72"
+                             style={{ left: LABEL_W + 8, top: '50%', transform: 'translateY(-50%)' }}>
                           <p className="font-medium text-xs text-gray-900 mb-2">{row.label}</p>
-                          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[10px]">
-                            <span className="text-gray-500">2025 Approved</span>
-                            <span className="text-right text-gray-900">{formatMoney(row.approved * 1000)}</span>
-                            <span className="text-gray-500">2026 Proposed</span>
-                            <span className="text-right text-gray-900">{formatMoney(row.proposed * 1000)}</span>
-                            <span className="text-gray-500">Consolidation</span>
-                            <span className={`text-right ${row.consolidation < 0 ? 'text-red-600' : row.consolidation > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                              {row.consolidation !== 0 ? `${getArrow(row.consolidation)}${formatMoney(Math.abs(row.consolidation) * 1000)}` : '—'}
-                            </span>
-                            <span className="text-gray-500">Other</span>
-                            <span className={`text-right ${row.other < 0 ? 'text-red-600' : row.other > 0 ? 'text-green-600' : 'text-gray-400'}`}>
-                              {row.other !== 0 ? `${getArrow(row.other)}${formatMoney(Math.abs(row.other) * 1000)}` : '—'}
-                            </span>
-                            <span className="text-gray-500 font-medium">2026 Revised</span>
-                            <span className="text-right text-un-blue font-medium">{formatMoney(row.revised * 1000)}</span>
+                          <div className="flex items-center gap-1 text-center text-[10px]">
+                            <div className="bg-gray-100 rounded px-1.5 py-0.5 flex-1">
+                              <p className="text-gray-500">2025</p>
+                              <p className="font-semibold text-gray-900">{formatMoney(row.approved)}</p>
+                            </div>
+                            <span className="text-gray-400">→</span>
+                            <div className="bg-gray-100 rounded px-1.5 py-0.5 flex-1">
+                              <p className="text-gray-500">Proposed</p>
+                              <p className="font-semibold text-gray-900">{formatMoney(row.proposed)}</p>
+                            </div>
+                            <span className="text-gray-400">→</span>
+                            <div className="flex-1 flex flex-col gap-0.5">
+                              <div className={`rounded px-1.5 py-0.5 ${row.consolidation < 0 ? 'bg-red-50' : row.consolidation > 0 ? 'bg-green-50' : 'bg-gray-50'}`}>
+                                <p className="text-gray-500">Consol.</p>
+                                <p className={`font-semibold ${row.consolidation < 0 ? 'text-red-600' : row.consolidation > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                  {row.consolidation !== 0 ? `${getArrow(row.consolidation)}${formatMoney(Math.abs(row.consolidation))}` : '—'}
+                                </p>
+                              </div>
+                              <div className={`rounded px-1.5 py-0.5 ${row.other < 0 ? 'bg-red-50' : row.other > 0 ? 'bg-green-50' : 'bg-gray-50'}`}>
+                                <p className="text-gray-500">Other</p>
+                                <p className={`font-semibold ${row.other < 0 ? 'text-red-600' : row.other > 0 ? 'text-green-600' : 'text-gray-400'}`}>
+                                  {row.other !== 0 ? `${getArrow(row.other)}${formatMoney(Math.abs(row.other))}` : '—'}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="text-gray-400">→</span>
+                            <div className="bg-un-blue/10 rounded px-1.5 py-0.5 flex-1 border border-un-blue/20">
+                              <p className="text-un-blue">Revised</p>
+                              <p className="font-bold text-un-blue">{formatMoney(row.revised)}</p>
+                            </div>
                           </div>
                         </div>
                       </div>
                     );
                   })}
+                </div>
+                {/* Legend */}
+                <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-500">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-gray-600 border border-white" />2025</span>
+                  <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-un-blue/50" />Proposed</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-un-blue border border-white" />Revised</span>
                 </div>
               </section>
             );
